@@ -5,7 +5,8 @@ from backend.routers import complaints
 from backend.routers import bias
 from backend.routers import hotspots
 from backend.routers import forecast
-from backend.routers import image  # ← ADDED
+from backend.routers import image
+from backend.routers import users   # ← ADDED
 
 app = FastAPI(title="NagaraIQ Civic Intelligence API")
 
@@ -14,7 +15,7 @@ app = FastAPI(title="NagaraIQ Civic Intelligence API")
 # -----------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # allow React frontend
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,11 +28,12 @@ app.add_middleware(
 def load_models():
     print("NagaraIQ backend starting...")
 
-    # Pre-warm CLIP so first request isn't slow
+    # preload CLIP model
     from backend.ml.image_classifier import _load_model
     _load_model()
 
     print("AI models ready")
+
 
 # -----------------------------
 # Root endpoint
@@ -40,12 +42,14 @@ def load_models():
 def root():
     return {"message": "NagaraIQ Backend Running"}
 
+
 # -----------------------------
 # Health check endpoint
 # -----------------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
 
 # -----------------------------
 # Include routers
@@ -54,4 +58,5 @@ app.include_router(complaints.router)
 app.include_router(bias.router)
 app.include_router(hotspots.router)
 app.include_router(forecast.router)
-app.include_router(image.router)  # ← ADDED
+app.include_router(image.router)
+app.include_router(users.router)   # ← ADDED
