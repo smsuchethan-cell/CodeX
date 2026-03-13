@@ -16,29 +16,29 @@ const API = axios.create({
    Complaints
 ------------------------------ */
 
-export const getComplaints = () => API.get("/complaints");
-export const createComplaint = (data: any) => API.post("/complaints", data);
+export const getComplaints = () => API.get("/api/complaints");
+export const createComplaint = (data: any) => API.post("/api/complaints", data);
 
 
 /* ------------------------------
    Bias Detection
 ------------------------------ */
 
-export const getBiasData = () => API.get("/bias");
+export const getBiasData = () => API.get("/api/bias");
 
 
 /* ------------------------------
    Hotspots
 ------------------------------ */
 
-export const getHotspots = () => API.get("/hotspots");
+export const getHotspots = () => API.get("/api/hotspots");
 
 
 /* ------------------------------
    Forecast
 ------------------------------ */
 
-export const getForecast = () => API.get("/forecast");
+export const getForecast = () => API.get("/api/forecast");
 
 
 /* ------------------------------
@@ -49,7 +49,7 @@ export const classifyImage = (file: File) => {
    const formData = new FormData();
    formData.append("file", file);
 
-   return API.post("/classify-image", formData, {
+   return API.post("/api/classify-image", formData, {
       headers: {
          "Content-Type": "multipart/form-data",
       },
@@ -61,7 +61,7 @@ export const classifyImage = (file: File) => {
    Users
 ------------------------------ */
 
-export const getUsers = () => API.get("/users");
+export const getUsers = () => API.get("/api/users");
 
 
 export default API;
