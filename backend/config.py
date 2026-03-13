@@ -1,0 +1,1 @@
+DATA_PATH = "backend/data/nagaraiq_complaints.csv"

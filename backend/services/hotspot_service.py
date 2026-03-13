@@ -6,6 +6,8 @@ def get_hotspots(file_path):
 
     df = pd.read_csv(file_path)
 
-    result = detect_hotspots(df)
+    # run clustering
+    df = detect_hotspots(df)
 
-    return result
+    # return important columns only
+    return df[["ward_name", "ward_id", "cluster_id"]]
