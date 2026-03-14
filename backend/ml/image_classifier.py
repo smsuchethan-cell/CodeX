@@ -1,8 +1,16 @@
 # backend/ml/image_classifier.py
 
-import torch
-from transformers import CLIPProcessor, CLIPModel
-from PIL import Image
+try:
+    import torch
+    from transformers import CLIPProcessor, CLIPModel
+    from PIL import Image
+    _ML_AVAILABLE = True
+except ImportError:
+    _ML_AVAILABLE = False
+    torch = None  # type: ignore
+    CLIPProcessor = None  # type: ignore
+    CLIPModel = None  # type: ignore
+
 import io
 
 
@@ -16,6 +24,9 @@ _processor = None
 
 def _load_model():
     global _model, _processor
+
+    if not _ML_AVAILABLE:
+        return None, None
 
     if _model is None:
         print("[NagaraIQ] Loading CLIP model — this happens once...")
@@ -85,10 +96,20 @@ SIMILARITY_GAP_THRESHOLD = 0.10
 
 def classify_image(image_bytes: bytes) -> dict:
 
+    if not _ML_AVAILABLE:
+        return {
+            "predicted_category": "Unknown",
+            "confidence": 0.0,
+            "needs_manual_confirmation": True,
+            "matched_prompt": None,
+            "ml_available": False,
+        }
+
     model, processor = _load_model()
 
     try:
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        from PIL import Image as PILImage
+        image = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
         return {
             "predicted_category": "Unknown",

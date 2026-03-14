@@ -31,11 +31,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileSelect, isLoading }
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files?.length > 0) processFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length > 0) processFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) processFile(e.target.files[0]);
   };
 
   return (
@@ -145,7 +145,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileSelect, isLoading }
         <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "flex-end" }}>
           <button
             type="button"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               setPreview(null);
             }}

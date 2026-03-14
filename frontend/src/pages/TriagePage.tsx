@@ -3,11 +3,7 @@ import { Link } from "react-router-dom";
 
 const CATEGORIES = ["Road & Potholes", "Drainage", "Sanitation & Garbage", "Streetlight", "Water Supply", "Encroachment", "Electricity", "Other"];
 
-const WARDS = [
-    "BTM Layout", "Koramangala", "Indiranagar", "Whitefield", "Marathahalli",
-    "Bellandur", "HSR Layout", "Rajajinagar", "Malleshwaram", "Jayanagar",
-    "Bommanahalli", "Shivajinagar", "Hebbal", "Yelahanka", "JP Nagar",
-];
+
 
 const getCategoryIcon = (cat: string) => {
     const icons: Record<string, string> = {
@@ -129,24 +125,24 @@ const TriagePage: React.FC = () => {
                         className="form-input"
                         placeholder="Search complaints or wards..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                         style={{ paddingLeft: "2.25rem", height: "38px", fontSize: "0.875rem" }}
                     />
                 </div>
 
-                <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ width: "auto", height: "38px", fontSize: "0.875rem" }}>
+                <select className="form-select" value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)} style={{ width: "auto", height: "38px", fontSize: "0.875rem" }}>
                     <option value="all">All Status</option>
                     <option value="open">Open</option>
                     <option value="in_progress">In Progress</option>
                     <option value="resolved">Resolved</option>
                 </select>
 
-                <select className="form-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ width: "auto", height: "38px", fontSize: "0.875rem" }}>
+                <select className="form-select" value={filterCategory} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterCategory(e.target.value)} style={{ width: "auto", height: "38px", fontSize: "0.875rem" }}>
                     <option value="all">All Categories</option>
                     {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
 
-                <select className="form-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ width: "auto", height: "38px", fontSize: "0.875rem" }}>
+                <select className="form-select" value={sortBy} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value)} style={{ width: "auto", height: "38px", fontSize: "0.875rem" }}>
                     <option value="urgency">Sort: Urgency</option>
                     <option value="newest">Sort: Newest</option>
                 </select>
@@ -200,7 +196,13 @@ const TriagePage: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((c) => {
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={7} style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
+                                            Loading complaints...
+                                        </td>
+                                    </tr>
+                                ) : filtered.map((c) => {
                                     const urgColor = getUrgencyColor(c.urgency);
                                     const statusStyle = getStatusBg(c.status);
                                     const isSelected = selectedComplaint === c.id;

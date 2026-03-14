@@ -40,9 +40,10 @@ const ForecastChart: React.FC = () => {
         const response = await getForecast();
         setData(response.data);
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching forecast:", err);
-        setError(err.message || "Failed to fetch forecast");
+        const message = err instanceof Error ? err.message : "Failed to fetch forecast";
+        setError(message);
       } finally {
         setLoading(false);
       }
@@ -112,7 +113,7 @@ const ForecastChart: React.FC = () => {
         }
       },
       y: {
-        grid: { color: "rgba(255, 255, 255, 0.04)", drawBorder: false },
+        grid: { color: "rgba(255, 255, 255, 0.04)" },
         border: { display: false, dash: [4, 4] },
         ticks: {
           font: { family: "'Inter', sans-serif", size: 10 },

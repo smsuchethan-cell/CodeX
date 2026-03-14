@@ -1,10 +1,15 @@
-from transformers import pipeline
+try:
+    from transformers import pipeline as _pipeline
 
-# Load zero-shot classifier
-classifier = pipeline(
-    "zero-shot-classification",
-    model="cross-encoder/nli-distilroberta-base"
-)
+    # Load zero-shot classifier (optional — requires 'transformers' package)
+    classifier = _pipeline(
+        "zero-shot-classification",
+        model="cross-encoder/nli-distilroberta-base"
+    )
+    _ML_AVAILABLE = True
+except Exception:
+    classifier = None
+    _ML_AVAILABLE = False
 
 # Complaint categories
 labels = [
@@ -18,18 +23,19 @@ labels = [
     "Other"
 ]
 
-def classify_complaint(text):
-    result = classifier(text, labels)
 
+def classify_complaint(text: str) -> dict:
+    if not _ML_AVAILABLE or classifier is None:
+        return {"category": "Other", "confidence": 0.0, "ml_available": False}
+
+    result = classifier(text, labels)
     return {
         "category": result["labels"][0],
-        "confidence": result["scores"][0]
+        "confidence": result["scores"][0],
+        "ml_available": True,
     }
 
 
 if __name__ == "__main__":
     test = "There is a huge pothole near my house causing accidents"
-
-    output = classify_complaint(test)
-
-    print(output)
+    print(classify_complaint(test))

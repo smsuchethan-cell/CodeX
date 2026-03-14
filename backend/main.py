@@ -7,6 +7,7 @@ from backend.routers import hotspots
 from backend.routers import forecast
 from backend.routers import image
 from backend.routers import users
+from backend.routers import compare
 
 
 app = FastAPI(title="NagaraIQ Civic Intelligence API")
@@ -28,14 +29,22 @@ app.add_middleware(
 # Startup event
 # -----------------------------
 @app.on_event("startup")
-def load_models():
+def startup():
     print("NagaraIQ backend starting...")
 
-    # preload CLIP model
-    from backend.ml.image_classifier import _load_model
-    _load_model()
+    # ── Auto-create all DB tables from SQLAlchemy models ──────────────────────
+    from backend.database import engine, Base
+    from backend.models import complaint, user   # noqa: F401 – ensure models are imported
+    Base.metadata.create_all(bind=engine)
+    print("Database tables ready")
 
-    print("AI models ready")
+    # ── Preload CLIP image classification model ───────────────────────────────
+    try:
+        from backend.ml.image_classifier import _load_model
+        _load_model()
+        print("AI models ready")
+    except Exception as e:
+        print(f"Warning: Could not load AI models: {e}")
 
 
 # -----------------------------
@@ -63,3 +72,4 @@ app.include_router(hotspots.router, prefix="/api", tags=["Hotspots"])
 app.include_router(forecast.router, prefix="/api", tags=["Forecast"])
 app.include_router(image.router, prefix="/api", tags=["Image Classification"])
 app.include_router(users.router, prefix="/api", tags=["Users"])
+app.include_router(compare.router, prefix="/api", tags=["Compare"])

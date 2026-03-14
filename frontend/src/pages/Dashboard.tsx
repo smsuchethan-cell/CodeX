@@ -3,14 +3,106 @@ import { Link } from "react-router-dom";
 import HotspotMap from "../components/HotspotMap";
 import ForecastChart from "../components/ForecastChart";
 import BiasTable from "../components/BiasTable";
+import { getBiasData, getBiasSummary } from "../api/api";
 
 interface DashboardProps {
   activeView: "authority" | "public";
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+/* ─── PublicHighlights ── Fetches real bias data, no static values ─────── */
+const PublicHighlights: React.FC = () => {
+  const [biasRows, setBiasRows] = useState<any[]>([]);
+  const [topWard, setTopWard] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
-// ─── Category Colors ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    Promise.all([getBiasData(), getBiasSummary()])
+      .then(([biasRes, summaryRes]) => {
+        const rows = biasRes.data as any[];
+        setBiasRows(rows.slice(0, 4));
+        setTopWard(rows[0] ?? null);
+        void summaryRes; // summary available if needed later
+      })
+      .catch(() => { setBiasRows([]); setTopWard(null); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+        {[1, 2].map((i) => (
+          <div key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "1.5rem", minHeight: "200px", opacity: 0.5 }} />
+        ))}
+      </div>
+    );
+  }
+
+  if (biasRows.length === 0) {
+    return (
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
+        No bias data yet — submit complaints to populate the accountability view.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+      {/* Bias Activity Radar — driven by real /api/bias data */}
+      <div style={{ background: "linear-gradient(135deg, rgba(248,113,113,0.06), rgba(236,72,153,0.04))", border: "1px solid rgba(248,113,113,0.2)", borderRadius: "var(--radius-lg)", padding: "1.5rem" }}>
+        <div className="section-title" style={{ marginBottom: "1.25rem" }}>
+          <div className="icon" style={{ background: "rgba(248,113,113,0.15)", fontSize: "0.875rem" }}>⚠</div>
+          High-Bias Ward Radar
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          {biasRows.map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem 1rem", background: "rgba(248,113,113,0.05)", border: "1px solid rgba(248,113,113,0.1)", borderRadius: "var(--radius-md)" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: "600", fontSize: "0.9rem", marginBottom: "0.4rem" }}>{item.ward_name}</div>
+                <div style={{ height: "4px", background: "rgba(248,113,113,0.15)", borderRadius: "9999px", overflow: "hidden" }}>
+                  <div style={{ width: `${item.bias_score}%`, height: "100%", background: "#f87171", borderRadius: "9999px" }} />
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "1.1rem", fontWeight: "700", color: "#f87171", fontFamily: "var(--font-display)" }}>{item.bias_score}/100</div>
+                <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>{item.total_complaints ?? 0} complaints</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Link to="/investigate" className="btn btn-danger btn-sm" style={{ marginTop: "1rem", width: "100%", justifyContent: "center" }}>Investigate →</Link>
+      </div>
+
+      {/* Top Ward Brief — driven by real top bias ward */}
+      <div style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.04))", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "var(--radius-lg)", padding: "1.5rem", display: "flex", flexDirection: "column" }}>
+        <div className="section-title" style={{ marginBottom: "1.25rem" }}>
+          <div className="icon" style={{ background: "rgba(99,102,241,0.15)", fontSize: "0.875rem" }}>🔍</div>
+          Auto Investigation Brief
+        </div>
+        {topWard && (
+          <div style={{ background: "var(--bg-elevated)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "var(--radius-md)", padding: "1.25rem", flex: 1, fontSize: "0.875rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>
+            <div style={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontWeight: "700", color: "#818cf8", fontSize: "0.9rem" }}>{topWard.ward_name}</span>
+              <span style={{ background: "rgba(248,113,113,0.1)", color: "#f87171", fontSize: "0.65rem", padding: "0.1rem 0.5rem", borderRadius: "var(--radius-full)", fontWeight: "700" }}>
+                BIAS SCORE: {topWard.bias_score}/100
+              </span>
+            </div>
+            <p style={{ marginBottom: "0.75rem" }}>
+              Analysis of <strong style={{ color: "var(--text-primary)" }}>{topWard.total_complaints ?? 0} complaints</strong> shows the highest bias score in the city —
+              avg resolution of <strong style={{ color: "#f87171" }}>{topWard.avg_resolution_days} days</strong> vs city average.
+            </p>
+            <p>
+              This ward has been flagged for elevated urgency scores relative to all other wards.
+              A field investigation is recommended to verify resolution quality.
+            </p>
+          </div>
+        )}
+        <Link to="/investigate" className="btn btn-primary" style={{ marginTop: "1rem", justifyContent: "center" }}>🤖 Generate Full Brief</Link>
+      </div>
+    </div>
+  );
+};
+
+
 const getCategoryStyle = (cat: string) => {
   const map: Record<string, { bg: string; color: string }> = {
     "Road & Potholes": { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" },
@@ -30,17 +122,18 @@ const getUrgencyColor = (score: number) => {
   return "#34d399";
 };
 
-const getStatusBadge = (status: string) => {
-  if (status === "open") return { bg: "rgba(248,113,113,0.1)", color: "#f87171", label: "Open" };
-  if (status === "in_progress") return { bg: "rgba(251,191,36,0.1)", color: "#fbbf24", label: "In Progress" };
-  return { bg: "rgba(52,211,153,0.1)", color: "#34d399", label: "Resolved" };
-};
+
 
 // ─── Component ───────────────────────────────────────────────────────────────
 const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Derived stats from complaint data
+  const openComplaints  = complaints.filter((c) => c.status === "open").length;
+  const highUrgency     = complaints.filter((c) => (c.ai_urgency_score ?? c.urgency_score ?? 0) >= 7).length;
+  const uniqueWards     = new Set(complaints.map((c) => c.ward_name).filter(Boolean)).size;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -65,7 +158,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
     fetchComplaints();
   }, []);
 
-  const stats = activeView === "authority" ? [] : [];
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -216,7 +309,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
                   borderRadius: "var(--radius-full)",
                 }}
               >
-                0
+                {loading ? "…" : openComplaints}
               </span>
             </div>
             <Link to="/triage" style={{ fontSize: "0.8125rem", color: "#f87171", fontWeight: "500" }}>
@@ -231,7 +324,24 @@ const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
 
       {/* ─── Stats Grid ───────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
-        {/* Stats will load from real-time API data */}
+        {loading ? (
+          [1,2,3,4].map((i) => (
+            <div key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "1.25rem", minHeight: "90px", opacity: 0.5 }} />
+          ))
+        ) : [
+          { icon: "📋", label: "Total Complaints", value: complaints.length, color: "var(--civic-blue-light)", link: "/triage" },
+          { icon: "🔴", label: "Open", value: openComplaints, color: "#f87171", link: "/triage" },
+          { icon: "⚡", label: "High Urgency", value: highUrgency, color: "#fbbf24", link: "/triage" },
+          { icon: "🏘", label: "Active Wards", value: uniqueWards, color: "#34d399", link: "/" },
+        ].map((stat, i) => (
+          <div key={i} className="stat-card" style={{ padding: "1.25rem" }}>
+            <div style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>{stat.icon}</div>
+            <div className="stat-value" style={{ color: stat.color, fontSize: "1.75rem" }}>
+              {stat.value}
+            </div>
+            <div className="stat-label">{stat.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* ─── Main Grid ────────────────────────────────────────────────── */}
@@ -507,117 +617,9 @@ const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
 
       {/* ─── Public Accountability Highlight (Public View) ───────────── */}
       {activeView === "public" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-          {/* Fake Resolution Radar */}
-          <div
-            style={{
-              background: "linear-gradient(135deg, rgba(248,113,113,0.06), rgba(236,72,153,0.04))",
-              border: "1px solid rgba(248,113,113,0.2)",
-              borderRadius: "var(--radius-lg)",
-              padding: "1.5rem",
-            }}
-          >
-            <div className="section-title" style={{ marginBottom: "1.25rem" }}>
-              <div className="icon" style={{ background: "rgba(248,113,113,0.15)", fontSize: "0.875rem" }}>⚠</div>
-              Fake Resolution Radar
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {[
-                { ward: "Rajajinagar", rate: 34, complaints: 23 },
-                { ward: "BTM Layout", rate: 27, complaints: 18 },
-                { ward: "Shivajinagar", rate: 21, complaints: 14 },
-                { ward: "Bommanahalli", rate: 15, complaints: 9 },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    padding: "0.75rem 1rem",
-                    background: "rgba(248,113,113,0.05)",
-                    border: "1px solid rgba(248,113,113,0.1)",
-                    borderRadius: "var(--radius-md)",
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: "600", fontSize: "0.9rem", color: "var(--text-primary)", marginBottom: "0.4rem" }}>
-                      {item.ward}
-                    </div>
-                    <div style={{ height: "4px", background: "rgba(248,113,113,0.15)", borderRadius: "9999px", overflow: "hidden" }}>
-                      <div style={{ width: `${item.rate}%`, height: "100%", background: "#f87171", borderRadius: "9999px" }} />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "1.1rem", fontWeight: "700", color: "#f87171", fontFamily: "var(--font-display)" }}>{item.rate}%</div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>{item.complaints} flagged</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Link to="/investigate" className="btn btn-danger btn-sm" style={{ marginTop: "1rem", width: "100%", justifyContent: "center" }}>
-              Investigate →
-            </Link>
-          </div>
-
-          {/* Quick Investigation Brief */}
-          <div
-            style={{
-              background: "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.04))",
-              border: "1px solid rgba(99,102,241,0.2)",
-              borderRadius: "var(--radius-lg)",
-              padding: "1.5rem",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div className="section-title" style={{ marginBottom: "1.25rem" }}>
-              <div className="icon" style={{ background: "rgba(99,102,241,0.15)", fontSize: "0.875rem" }}>🔍</div>
-              Auto Investigation Brief
-            </div>
-            <div
-              style={{
-                background: "var(--bg-elevated)",
-                border: "1px solid rgba(99,102,241,0.2)",
-                borderRadius: "var(--radius-md)",
-                padding: "1.25rem",
-                flex: 1,
-                fontSize: "0.875rem",
-                lineHeight: 1.7,
-                color: "var(--text-secondary)",
-              }}
-            >
-              <div style={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span style={{ fontWeight: "700", color: "#818cf8", fontSize: "0.9rem" }}>
-                  Ward 67 — Rajajinagar
-                </span>
-                <span
-                  style={{
-                    background: "rgba(248,113,113,0.1)",
-                    color: "#f87171",
-                    fontSize: "0.65rem",
-                    padding: "0.1rem 0.5rem",
-                    borderRadius: "var(--radius-full)",
-                    fontWeight: "700",
-                  }}
-                >
-                  BIAS SCORE: 78/100
-                </span>
-              </div>
-              <p style={{ marginBottom: "0.75rem" }}>
-                Analysis of <strong style={{ color: "var(--text-primary)" }}>847 complaints</strong> (Jan–Mar 2024) reveals a statistically significant{" "}
-                <strong style={{ color: "#f87171" }}>13.1× longer resolution time</strong> vs city average.
-              </p>
-              <p>
-                <strong style={{ color: "#fbbf24" }}>34%</strong> of 'resolved' tickets were followed by duplicate complaints within 14 days — highest fake-resolution rate in the city.
-              </p>
-            </div>
-            <Link to="/investigate" className="btn btn-primary" style={{ marginTop: "1rem", justifyContent: "center" }}>
-              🤖 Generate Full Brief with AI
-            </Link>
-          </div>
-        </div>
+        <PublicHighlights />
       )}
+
     </div>
   );
 };
