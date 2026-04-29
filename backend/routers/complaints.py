@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import Optional
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.models.complaint import Complaint as ComplaintModel
@@ -33,10 +35,26 @@ def get_complaints(db: Session = Depends(get_db)):
             "latitude":           r.latitude,
             "longitude":          r.longitude,
             "status":             r.status,
+            "officer_id":         getattr(r, "officer_id", None),
             "filed_date":         str(r.created_at) if r.created_at else None,
         }
         for r in rows
     ]
+
+@router.get("/complaints/stats")
+def get_complaint_stats(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    total = db.query(ComplaintModel).count()
+    open_c = db.query(ComplaintModel).filter(ComplaintModel.status == "open").count()
+    high_urgency = db.query(ComplaintModel).filter(ComplaintModel.urgency_score >= 80).count()
+    wards = db.query(func.count(func.distinct(ComplaintModel.ward_name))).scalar()
+    
+    return {
+        "total": total,
+        "open": open_c,
+        "high_urgency": high_urgency,
+        "unique_wards": wards
+    }
 
 
 # ── POST /complaints ───────────────────────────────────────────────────────────
@@ -72,5 +90,30 @@ def create_complaint(complaint: Complaint, db: Session = Depends(get_db)):
             "ai_urgency_score":   new_complaint.urgency_score,
             "ward_name":          new_complaint.ward_name,
             "status":             new_complaint.status,
+            "officer_id":         None,
         }
+    }
+
+class ComplaintUpdate(BaseModel):
+    status: Optional[str] = None
+    officer_id: Optional[str] = None
+
+@router.patch("/complaints/{complaint_id}")
+def update_complaint(complaint_id: int, update_data: ComplaintUpdate, db: Session = Depends(get_db)):
+    complaint = db.query(ComplaintModel).filter(ComplaintModel.id == complaint_id).first()
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    
+    if update_data.status is not None:
+        complaint.status = update_data.status
+    if update_data.officer_id is not None:
+        complaint.officer_id = update_data.officer_id
+        
+    db.commit()
+    db.refresh(complaint)
+    
+    return {
+        "message": "Status updated successfully", 
+        "status": complaint.status,
+        "officer_id": getattr(complaint, "officer_id", None)
     }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { updateComplaint } from "../api/api";
 
 const CATEGORIES = ["Road & Potholes", "Drainage", "Sanitation & Garbage", "Streetlight", "Water Supply", "Encroachment", "Electricity", "Other"];
 
@@ -27,12 +28,28 @@ const TriagePage: React.FC = () => {
     const [selectedComplaint, setSelectedComplaint] = useState<number | null>(null);
     const [complaints, setComplaints] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [officerInput, setOfficerInput] = useState("");
+
+    const assignOfficer = async (id: number) => {
+        if (!officerInput) return;
+        try {
+            await updateComplaint(id, { officer_id: officerInput });
+            setComplaints(complaints.map((c: any) => 
+                (c.id === id || c.complaint_id === id) 
+                ? { ...c, officer_id: officerInput } 
+                : c
+            ));
+            setOfficerInput("");
+        } catch (err) {
+            console.error("Failed to assign:", err);
+        }
+    };
 
     useEffect(() => {
         const fetchComplaints = async () => {
             try {
                 setLoading(true);
-                const response = await fetch("http://localhost:8000/api/complaints");
+                const response = await fetch("/api/complaints");
                 const data = await response.json();
                 setComplaints(data);
             } catch (error) {
@@ -53,12 +70,28 @@ const TriagePage: React.FC = () => {
         category: c.predicted_category || c.category || "Other",
         urgency: c.ai_urgency_score || c.urgency || 0,
         ward: c.ward_name || c.ward || "N/A",
-        status: "open",
+        status: c.status || "open",
         filed: c.filed_date || new Date().toISOString(),
         department: "BBMP",
         officer: c.officer_id || null,
         severity_keywords: [],
     }));
+
+    const updateComplaintStatus = async (id: number, newStatus: string) => {
+        try {
+            await fetch(`/api/complaints/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus }),
+            });
+            setComplaints(complaints.map((c: any) => (c.id === id || c.complaint_id === id) ? { ...c, status: newStatus } : c));
+            if (selectedComplaint === id) {
+                // If you want to handle auto-deselecting or keeping it selected
+            }
+        } catch (error) {
+            console.error("Failed to update status:", error);
+        }
+    };
 
     const filtered = processedComplaints.filter((c) => {
         if (filterStatus !== "all" && c.status !== filterStatus) return false;
@@ -368,8 +401,18 @@ const TriagePage: React.FC = () => {
                             {!selected.officer && (
                                 <div style={{ background: "var(--bg-elevated)", borderRadius: "var(--radius-md)", padding: "0.875rem" }}>
                                     <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>Assign Officer</div>
-                                    <input className="form-input" placeholder="Officer name or ID..." style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }} />
-                                    <button className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center" }}>
+                                    <input 
+                                        className="form-input" 
+                                        placeholder="Officer name or ID..." 
+                                        style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }} 
+                                        value={officerInput}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOfficerInput(e.target.value)}
+                                    />
+                                    <button 
+                                        className="btn btn-primary btn-sm" 
+                                        style={{ width: "100%", justifyContent: "center" }}
+                                        onClick={() => assignOfficer(selected.id)}
+                                    >
                                         Assign & Notify
                                     </button>
                                 </div>
@@ -385,8 +428,8 @@ const TriagePage: React.FC = () => {
                                 gap: "0.625rem",
                             }}
                         >
-                            <button className="btn btn-success btn-sm" style={{ flex: 1, justifyContent: "center" }}>✓ Mark Resolved</button>
-                            <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center" }}>⟳ In Progress</button>
+                            <button onClick={() => updateComplaintStatus(selected.id, "resolved")} className="btn btn-success btn-sm" style={{ flex: 1, justifyContent: "center" }}>✓ Mark Resolved</button>
+                            <button onClick={() => updateComplaintStatus(selected.id, "in_progress")} className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: "center" }}>⟳ In Progress</button>
                         </div>
                     </div>
                 )}

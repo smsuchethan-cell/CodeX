@@ -6,13 +6,15 @@ All backend requests go through this file.
 */
 
 const API = axios.create({
-   baseURL: "http://127.0.0.1:8000",
+   baseURL: import.meta.env.VITE_API_URL || "",
    headers: { "Content-Type": "application/json" },
 });
 
 /* Complaints */
 export const getComplaints = () => API.get("/api/complaints");
 export const createComplaint = (data: object) => API.post("/api/complaints", data);
+export const getComplaintStats = () => API.get("/api/complaints/stats");
+export const updateComplaint = (id: number | string, data: object) => API.patch(`/api/complaints/${id}`, data);
 
 /* Bias */
 export const getBiasData    = () => API.get("/api/bias");
@@ -41,5 +43,6 @@ export const getWards = () => API.get("/api/wards");
 
 /* Users */
 export const getUsers = () => API.get("/api/users");
+export const loginUser = (data: object) => API.post("/api/users/login", data);
 
 export default API;

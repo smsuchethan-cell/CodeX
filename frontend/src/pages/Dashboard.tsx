@@ -3,25 +3,48 @@ import { Link } from "react-router-dom";
 import HotspotMap from "../components/HotspotMap";
 import ForecastChart from "../components/ForecastChart";
 import BiasTable from "../components/BiasTable";
-import { getBiasData, getBiasSummary } from "../api/api";
+import { getBiasData, getBiasSummary, getComplaintStats } from "../api/api";
 
 interface DashboardProps {
   activeView: "authority" | "public";
 }
 
+interface BiasRow {
+  ward_name: string;
+  bias_score: number;
+  avg_resolution_days: number;
+  total_complaints: number;
+}
+
+interface Complaint {
+  id?: number;
+  complaint_id?: string;
+  raw_text?: string;
+  predicted_category?: string;
+  category?: string;
+  ai_urgency_score?: number;
+  urgency_score?: number;
+  urgency?: number;
+  ward_name?: string;
+  ward?: string;
+  status?: string;
+  filed_date?: string;
+}
+
 /* ─── PublicHighlights ── Fetches real bias data, no static values ─────── */
 const PublicHighlights: React.FC = () => {
-  const [biasRows, setBiasRows] = useState<any[]>([]);
-  const [topWard, setTopWard] = useState<any | null>(null);
+  const [biasRows, setBiasRows] = useState<BiasRow[]>([]);
+  const [topWard, setTopWard] = useState<BiasRow | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // getBiasSummary is fetched in parallel but its result is used on BiasPage;
+    // here we only need the bias rows.
     Promise.all([getBiasData(), getBiasSummary()])
-      .then(([biasRes, summaryRes]) => {
-        const rows = biasRes.data as any[];
+      .then(([biasRes]) => {
+        const rows = biasRes.data as BiasRow[];
         setBiasRows(rows.slice(0, 4));
         setTopWard(rows[0] ?? null);
-        void summaryRes; // summary available if needed later
       })
       .catch(() => { setBiasRows([]); setTopWard(null); })
       .finally(() => setLoading(false));
@@ -127,13 +150,15 @@ const getUrgencyColor = (score: number) => {
 // ─── Component ───────────────────────────────────────────────────────────────
 const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [complaints, setComplaints] = useState<any[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<{total: number, open: number, high_urgency: number, unique_wards: number} | null>(null);
 
-  // Derived stats from complaint data
-  const openComplaints  = complaints.filter((c) => c.status === "open").length;
-  const highUrgency     = complaints.filter((c) => (c.ai_urgency_score ?? c.urgency_score ?? 0) >= 7).length;
-  const uniqueWards     = new Set(complaints.map((c) => c.ward_name).filter(Boolean)).size;
+  // Derived stats from complaint data API
+  const openComplaints  = stats ? stats.open : complaints.filter((c) => c.status === "open").length;
+  const highUrgency     = stats ? stats.high_urgency : complaints.filter((c) => (c.ai_urgency_score ?? c.urgency_score ?? 0) >= 7).length;
+  const uniqueWards     = stats ? stats.unique_wards : new Set(complaints.map((c) => c.ward_name).filter(Boolean)).size;
+  const totalComplaints = stats ? stats.total : complaints.length;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -144,11 +169,15 @@ const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
     const fetchComplaints = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:8000/api/complaints");
-        const data = await response.json();
+        const [compRes, statsRes] = await Promise.all([
+          fetch("/api/complaints"),
+          getComplaintStats()
+        ]);
+        const data = await compRes.json();
         setComplaints(data.slice(0, 5));
+        setStats(statsRes.data);
       } catch (error) {
-        console.error("Failed to fetch complaints:", error);
+        console.error("Failed to fetch complaints or stats:", error);
         setComplaints([]);
       } finally {
         setLoading(false);
@@ -329,7 +358,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activeView }) => {
             <div key={i} style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "1.25rem", minHeight: "90px", opacity: 0.5 }} />
           ))
         ) : [
-          { icon: "📋", label: "Total Complaints", value: complaints.length, color: "var(--civic-blue-light)", link: "/triage" },
+          { icon: "📋", label: "Total Complaints", value: totalComplaints, color: "var(--civic-blue-light)", link: "/triage" },
           { icon: "🔴", label: "Open", value: openComplaints, color: "#f87171", link: "/triage" },
           { icon: "⚡", label: "High Urgency", value: highUrgency, color: "#fbbf24", link: "/triage" },
           { icon: "🏘", label: "Active Wards", value: uniqueWards, color: "#34d399", link: "/" },

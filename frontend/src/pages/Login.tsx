@@ -1,10 +1,22 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { loginUser } from "../api/api";
 
 const Login: React.FC = (): React.JSX.Element => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"officer" | "admin">("officer");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    try {
+      await loginUser({ email, password, role });
+      window.location.href = "/";
+    } catch (err) {
+      alert("Invalid credentials, please try again.");
+    }
+  };
 
   return (
     <div
@@ -97,7 +109,7 @@ const Login: React.FC = (): React.JSX.Element => {
         </div>
 
         <form
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={handleLogin}
           style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}
         >
           <div className="form-group">
@@ -107,7 +119,7 @@ const Login: React.FC = (): React.JSX.Element => {
               type="email"
               placeholder="officer@bbmp.gov.in"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               id="login-email"
             />
           </div>
@@ -119,7 +131,7 @@ const Login: React.FC = (): React.JSX.Element => {
               type="password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               id="login-password"
             />
           </div>

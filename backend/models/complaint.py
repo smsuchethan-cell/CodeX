@@ -14,4 +14,5 @@ class Complaint(Base):
     latitude = Column(Float)
     longitude = Column(Float)
     status = Column(String, default="open")
+    officer_id = Column(String, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

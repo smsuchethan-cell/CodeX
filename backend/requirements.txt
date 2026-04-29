@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+pydantic
+python-multipart
+# Optional for local ML features, gracefully degrades if missing
+torch
+transformers
+pillow
+pandas

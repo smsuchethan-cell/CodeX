@@ -1,6 +1,6 @@
 import pandas as pd
 from backend.ml.classifier import classify_complaint
-from backend.ml.urgency_scorer import compute_urgency
+from backend.ml.urgency_scorer import score_urgency as compute_urgency
 
 
 def process_complaints(file_path):

@@ -1,3 +1,4 @@
+# NOTE: This file is not currently used by any router
 from rapidfuzz import fuzz
 
 def detect_fake_resolutions(df):
